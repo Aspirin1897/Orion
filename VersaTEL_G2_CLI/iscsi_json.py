@@ -6,6 +6,8 @@ import sys
 import traceback
 
 
+# 获取所有映射关系
+
 
 class JsonOperation(object):
     def __init__(self):
@@ -37,6 +39,11 @@ class JsonOperation(object):
         except json.decoder.JSONDecodeError:
             print('Failed to read json file.')
             sys.exit()
+
+
+    def commit_json(self):
+        with open('iSCSI_Data.json', "w") as fw:
+            json.dump(self.json_data, fw, indent=4, separators=(',', ': '))
 
 
     # 获取Host,Disk、Target，HostGroup、DiskGroup、Map的信息
@@ -262,8 +269,6 @@ class JsonOperation(object):
     @s.deco_json_operation('JSON更新后的资源信息')
     def update_data(self, first_key, data_key, data_value):
         self.json_data[first_key].update({data_key: data_value})
-        with open('iSCSI_Data.json', "w") as fw:
-            json.dump(self.json_data, fw, indent=4, separators=(',', ': '))
         return self.json_data[first_key]
     
     
@@ -271,8 +276,6 @@ class JsonOperation(object):
     @s.deco_json_operation(f'JSON更新disk信息')
     def cover_data(self, first_key, data):
         self.json_data[first_key] = data
-        with open('iSCSI_Data.json', "w") as fw:
-            json.dump(self.json_data, fw, indent=4, separators=(',', ': '))
         return self.json_data[first_key]
 
 
@@ -319,8 +322,6 @@ class JsonOperation(object):
     @s.deco_json_operation('JSON删除后的资源信息')
     def delete_data(self, first_key, data_key):
         self.json_data[first_key].pop(data_key)
-        with open('iSCSI_Data.json', "w") as fw:
-            json.dump(self.json_data, fw, indent=4, separators=(',', ': '))
         return self.json_data[first_key]
 
     # 更新crm configure资源的信息
@@ -330,137 +331,12 @@ class JsonOperation(object):
         self.json_data['crm'].update({'resource': resource})
         self.json_data['crm'].update({'vip': vip})
         self.json_data['crm'].update({'target': target})
-        with open('iSCSI_Data.json', "w") as fw:
-            json.dump(self.json_data, fw, indent=4, separators=(',', ': '))
+        self.commit_json()
         return self.json_data['crm']
 
 
-    def get_disk_with_iqn(self):
-
-        data = self.json_data
-        dict_disk_iqn = {}
-        for disk in data['Disk']:
-            dict_disk_iqn.update({disk: []})
-
-        for map in data['Map'].values():
-            for dg in map['DiskGroup']:
-                for disk in data['DiskGroup'][dg]:
-                    list_iqn = []
-                    for hg in map['HostGroup']:
-                        for host in data['HostGroup'][hg]:
-                            list_iqn.append(data['Host'][host])
-                    dict_disk_iqn[disk] = s.append_list(dict_disk_iqn[disk], list_iqn)
-
-        return dict_disk_iqn
 
 
-    # 集合的方式
-    # def get_disk_with_iqn(self):
-    #
-    #     data = self.json_data
-    #     dict_disk_iqn = {}
-    #     for disk in data['Disk']:
-    #         dict_disk_iqn.update({disk: set()})
-    #
-    #     for map in data['Map'].values():
-    #         for dg in map['DiskGroup']:
-    #             for disk in data['DiskGroup'][dg]:
-    #                 set_iqn = set()
-    #                 for hg in map['HostGroup']:
-    #                     for host in data['HostGroup'][hg]:
-    #                         set_iqn.add(data['Host'][host])
-    #                 dict_disk_iqn[disk] = dict_disk_iqn[disk] | set_iqn
-    #
-    #     return dict_disk_iqn
-
-
-class JsonMofidy(JsonOperation):
-    def __init__(self):
-        super().__init__()
-
-    @s.deco_json_operation('读取到的JSON数据(临时JSON对象)')
-    def read_json(self):
-        try:
-            json_data = open("iSCSI_Data.json", encoding='utf-8')
-            json_dict = json.load(json_data)
-            json_data.close()
-            return json_dict
-
-        except FileNotFoundError:
-            with open('iSCSI_Data.json', "w") as fw:
-                json_dict = {
-                    "Host": {},
-                    "Disk": {},
-                    "HostGroup": {},
-                    "DiskGroup": {},
-                    "Map": {}}
-                json.dump(json_dict, fw, indent=4, separators=(',', ': '))
-            return json_dict
-        except json.decoder.JSONDecodeError:
-            print('Failed to read json file.')
-            sys.exit()
-
-    @s.deco_json_operation('JSON更新后的资源信息（临时JSON对象）')
-    def update_data(self, first_key, data_key, data_value):
-        self.json_data[first_key].update({data_key: data_value})
-        return self.json_data[first_key]
-
-
-    def append_member(self,iscsi_type,target,member,type=None):
-        data = self.json_data
-        if type == 'Map':
-            list_member = data['Map'][target][iscsi_type]
-            list_member.extend(member)
-            dict_map = data['Map'][target]
-            dict_map.update({iscsi_type:list_member})
-            self.update_data('Map',target,dict_map)
-        else:
-            list_member = data[iscsi_type][target]
-            list_member.extend(member)
-            self.update_data(iscsi_type, target, list(set(list_member)))
-
-
-    def remove_member(self,iscsi_type,target,member,type=None):
-        data = self.json_data
-        if type == 'Map':
-            list_member = data['Map'][target][iscsi_type]
-            for i in member:
-                list_member.remove(i)
-            dict_map = data['Map'][target]
-            dict_map.update({iscsi_type:list_member})
-            self.update_data('Map',target,dict_map)
-        else:
-            list_member = data[iscsi_type][target]
-            for i in member:
-                list_member.remove(i)
-            self.update_data(iscsi_type, target, list(set(list_member)))
-
-
-    def get_iqn_by_disk(self,disk):
-        """
-        通过disk获取到对应iSCSILogicalUnit的allowed initiators
-        allowed initiators即host的iqn
-        :param disk:str
-        :return:list
-        """
-
-        get_map_by_disk = self.get_map_by_disk.__wrapped__
-        # 通过disk获取dg
-        list_initiator = []
-        list_hg = []
-        list_host = []
-        list_map = get_map_by_disk(self,disk)
-        for map in list_map:
-            list_hg+=self.get_data('Map')[map]['HostGroup']
-
-        for hg in set(list_hg):
-            for host in self.get_data('HostGroup')[hg]:
-                list_host.append(host)
-
-        for host in set(list_host):
-            list_initiator.append(self.get_data('Host')[host])
-
-        return list(set(list_initiator))
 
 
 
