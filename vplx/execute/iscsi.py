@@ -734,9 +734,8 @@ class Portal():
         self.logger = log.Log()
         self.js = iscsi_json.JsonOperation()
         self.progressbar = s.ProgressBar()
-        s.ProgressBar.total = 60
 
-    def create(self, name, ip, port=3260, netmask=24):
+    def create(self, name, ip, port, netmask):
         if not self._check_name(name):
             s.prt_log(f'{name} naming does not conform to the specification', 1)
             return
@@ -756,7 +755,11 @@ class Portal():
             s.prt_log(f'{ip} is already in use, please use another IP',1)
             return
 
+        self.progressbar.print_next(0,'add')
+        CRMData().check()
+
         try:
+            s.ProgressBar.total = 66
             obj_ipadrr = IPaddr2()
             obj_ipadrr.create(name, ip, netmask)
             self.progressbar.print_next(10,'add')
@@ -777,6 +780,7 @@ class Portal():
         except Exception as ex:
             self.logger.write_to_log('DATA', 'DEBUG', 'exception', 'Rollback', str(traceback.format_exc()))
             RollBack.rollback(self.progressbar,ip,port,netmask)
+            print('An error occurred midway through the execution and has been restored')
             return
 
         # 验证
@@ -785,11 +789,19 @@ class Portal():
         if status == 'OK':
             self.js.update_data('Portal', name, {'ip': ip, 'port': str(port),'netmask':str(netmask),'target':[]})
             self.js.commit_data()
+            self.progressbar.print_next(6, 'add')
+            s.prt_log(f'Create {name} successfully', 1)
         elif status == 'NETWORK_ERROR':
             obj_ipadrr.delete(name)
+            self.progressbar.print_next(22, 'less')
             obj_portblock.delete(f'{name}_prtblk_on')
+            self.progressbar.print_next(22, 'less')
             obj_portblock.delete(f'{name}_prtblk_off')
+            self.progressbar.print_next(22, 'less')
             s.prt_log('The portal cannot be created normally due to the wrong IP address network segment or other network problems, please reconfigure', 1)
+        elif status == 'FAIL':
+            s.prt_log(f'Failed to create {name}, please check', 1)
+
 
     def delete(self, name):
         if not self.js.check_key('Portal', name):
@@ -800,23 +812,34 @@ class Portal():
             s.prt_log(f'In use：{",".join(target)}. Can not delete', 1)
             return
 
+        self.progressbar.print_next(0,'add')
+        CRMData().check()
+
         try:
+            s.ProgressBar.total = 70
             obj_ipadrr = IPaddr2()
             obj_ipadrr.delete(name)
+            self.progressbar.print_next(40, 'add')
 
             obj_portblock = PortBlockGroup()
             obj_portblock.delete(f'{name}_prtblk_on')
+            self.progressbar.print_next(10, 'add')
             obj_portblock.delete(f'{name}_prtblk_off')
+            self.progressbar.print_next(10, 'add')
 
         except Exception as ex:
             self.logger.write_to_log('DATA', 'DEBUG', 'exception', 'Rollback', str(traceback.format_exc()))
             portal = self.js.json_data['Portal'][name]
-            RollBack.rollback(portal['ip'], portal['port'], portal['netmask'])
+            RollBack.rollback(self.progressbar,portal['ip'], portal['port'], portal['netmask'])
             # 恢复colocation和order
             if RollBack.dict_rollback['IPaddr2']:
                 Colocation.create(f'col_{name}_prtblk_on', f'{name}_prtblk_on', name)
+                self.progressbar.print_next(10, 'less')
                 Colocation.create(f'col_{name}_prtblk_off', f'{name}_prtblk_off', name)
+                self.progressbar.print_next(10, 'less')
                 Order.create(f'or_{name}_prtblk_on', name, f'{name}_prtblk_on')
+                self.progressbar.print_next(10, 'less')
+            print('An error occurred midway through the execution and has been restored')
             return
 
         # 验证
@@ -825,6 +848,7 @@ class Portal():
         if not name in dict.keys():
             self.js.delete_data('Portal',name)
             self.js.commit_data()
+            self.progressbar.print_next(10,'add')
             print(f'Delete {name} successfully')
         else:
             print(f'Failed to delete {name}, please check')
@@ -857,10 +881,12 @@ class Portal():
             flag_only_netmask = False
         else:
             port = portal['port']
+
         # 指定了netmask
         if netmask:
             if not self._check_netmask(netmask):
                 s.prt_log(f'{netmask} does not meet specifications(Range：1-32)', 1)
+                return
         else:
             netmask = portal['netmask']
 
@@ -868,56 +894,66 @@ class Portal():
             s.prt_log(f'The parameters are the same, no need to modify',1)
             return
 
+        CRMData().check()
+
         if flag_only_netmask:
             # 只执行了netmask进行修改，这种情况下只需要对vip的netmask进行修改就行
+            s.ProgressBar.total = 12
             try:
                 obj_ipadrr = IPaddr2()
-                obj_ipadrr.modify(name, ip)
-
-                obj_portblock = PortBlockGroup()
-                obj_portblock.modify(f'{name}_prtblk_on', ip, port)
-                obj_portblock.modify(f'{name}_prtblk_off', ip, port)
+                obj_ipadrr.modify(name, ip,netmask)
+                self.progressbar.print_next(10, 'add')
             except Exception as ex:
                 self.logger.write_to_log('DATA', 'DEBUG', 'exception', 'Rollback', str(traceback.format_exc()))
-                RollBack.rollback(portal['ip'],portal['port'],portal['netmask'])
+                RollBack.rollback(self.progressbar,portal['ip'],portal['port'],portal['netmask'])
                 return
 
         else:
             if portal['target']:
+                s.ProgressBar.total = 52
                 # 反馈修改影响
                 print(f'Target：{",".join(portal["target"])}using this portal.These targets will be modified synchronously, whether to continue?y/n')
                 answer = s.get_answer()
                 if not answer in ['y', 'yes', 'Y', 'YES']:
                     s.prt_log('Modify canceled', 2)
-
                 try:
                     obj_ipadrr = IPaddr2()
                     obj_ipadrr.modify(name, ip)
+                    self.progressbar.print_next(10, 'add')
 
                     obj_portblock = PortBlockGroup()
                     obj_portblock.modify(f'{name}_prtblk_on', ip, port)
+                    self.progressbar.print_next(10, 'add')
                     obj_portblock.modify(f'{name}_prtblk_off', ip, port)
+                    self.progressbar.print_next(10, 'add')
 
                     obj_target = ISCSITarget()
                     for target in portal['target']:
                         obj_target.modify(target, ip, port)
+                    self.progressbar.print_next(20, 'add')
                 except Exception as ex:
                     self.logger.write_to_log('DATA', 'DEBUG', 'exception', 'Rollback', str(traceback.format_exc()))
-                    RollBack.rollback(portal['ip'], portal['port'], portal['netmask'])
+                    RollBack.rollback(self.progressbar,portal['ip'], portal['port'], portal['netmask'])
                     return
 
             else:
                 # 直接修改
                 try:
+                    s.ProgressBar.total = 32
                     obj_ipadrr = IPaddr2()
                     obj_ipadrr.modify(name, ip, netmask)
+                    self.progressbar.print_next(10, 'add')
 
                     obj_portblock = PortBlockGroup()
                     obj_portblock.modify(f'{name}_prtblk_on', ip, port)
+                    self.progressbar.print_next(10, 'add')
                     obj_portblock.modify(f'{name}_prtblk_off', ip, port)
+                    self.progressbar.print_next(10, 'add')
+                    raise TypeError
                 except Exception as ex:
                     self.logger.write_to_log('DATA', 'DEBUG', 'exception', 'Rollback', str(traceback.format_exc()))
-                    RollBack.rollback(portal['ip'], portal['port'], portal['netmask'])
+                    RollBack.rollback(self.progressbar,portal['ip'], portal['port'], portal['netmask'])
+                    print('An error occurred midway through the execution and has been restored')
                     return
 
         # 暂不验证（见需求）
@@ -930,6 +966,7 @@ class Portal():
             self.js.json_data['Target'][target]['ip'] = ip
             self.js.json_data['Target'][target]['port'] = str(port)
         self.js.commit_data()
+        self.progressbar.print_next(2, 'add')
         s.prt_log(f'Modify {name} successfully',0)
 
 
@@ -938,6 +975,7 @@ class Portal():
         用表格展示所有portal数据
         :return: all portal
         """
+        CRMData().check()
         list_header = ["Portal", "IP", "Port", "Netmask", "iSCSITarget"]
         list_data = []
         for portal, data in self.js.json_data['Portal'].items():
@@ -978,7 +1016,6 @@ class Portal():
         obj_crm = CRMConfig()
         status = obj_crm.get_crm_res_status(name, type='IPaddr2')
         if status == 'STARTED':
-            s.prt_log(f'Create {name} successfully', 1)
             return 'OK'
         elif status == 'NOT_STARTED':
             failed_actions = obj_crm.get_failed_actions(name)
@@ -991,5 +1028,4 @@ class Portal():
                 s.prt_log('Unknown error, please check', 1)
                 return 'UNKNOWN_ERROR'
         else:
-            s.prt_log(f'Failed to create {name}, please check', 1)
             return 'FAIL'

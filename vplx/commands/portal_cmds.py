@@ -157,36 +157,24 @@ class PortalCommands():
 
     @s.deco_record_exception
     def create(self, args):
-        crm = ex.CRMData()
-        crm.check()
-
         portal = ex.Portal()
         portal.create(args.portal,args.ip,args.port,args.netmask)
 
 
     @s.deco_record_exception
     def show(self, args):
-        crm = ex.CRMData()
-        crm.check()
-
         portal = ex.Portal()
         portal.show()
 
 
     @s.deco_record_exception
     def delete(self, args):
-        crm = ex.CRMData()
-        crm.check()
-
         portal = ex.Portal()
         portal.delete(args.portal)
 
 
     @s.deco_record_exception
     def modify(self, args):
-        crm = ex.CRMData()
-        crm.check()
-
         if any([args.ip,args.port,args.netmask]):
             portal = ex.Portal()
             portal.modify(args.portal,args.ip,args.port,args.netmask)

@@ -1,15 +1,14 @@
 # coding=utf-8
 import re
 import time
-import types
 import traceback
-from functools import wraps
 import copy
 
 import iscsi_json
 import sundry as s
 import subprocess
 import consts
+import log
 
 @s.deco_cmd('crm')
 def execute_crm_cmd(cmd, timeout=60):
@@ -104,11 +103,9 @@ class RollBack():
     def rollback(cls,progressbar,ip,port,netmask):
         # 目前只用于Portal的回滚，之后Target的回滚可以根据需要增加一个判断类型的参数
         cls.progressbar = progressbar
-        print("Execution error, resource rollback")
         cls.rb_ipaddr2(cls,ip,port,netmask)
         cls.rb_block(cls,ip,port,netmask)
         cls.rb_target(cls,ip,port,netmask)
-        print("resource rollback ends")
 
     # 回滚完之后考虑做一个对crm配置的检查？跟name相关的资源如果还存在，进行提示？
 
@@ -134,13 +131,16 @@ class RollBack():
             for name,oprt in self.dict_rollback['PortBlockGroup'].items():
                 if oprt == 'create':
                     obj_block.delete(name)
+                    self.progressbar.print_next(10, 'less')
                 elif oprt == 'delete':
                     action = 'block'
                     if name.split('_')[2] == 'off':
                         action = 'unblock'
                     obj_block.create(name,ip,port,action)
+                    self.progressbar.print_next(10, 'less')
                 elif oprt == 'modify':
                     obj_block.modify(name,ip,port)
+                    self.progressbar.print_next(10, 'less')
 
 
     def rb_target(self,ip,port,netmask):
@@ -149,6 +149,7 @@ class RollBack():
             for name,oprt in self.dict_rollback['ISCSITarget'].items():
                 if oprt == 'modify':
                     obj_target.modify(name,ip,port)
+            self.progressbar.print_next(20, 'less')
 
 
 
@@ -350,12 +351,14 @@ class CRMConfig():
         if not type in ['IPaddr2','iSCSITarget','portblock','iSCSILogicalUnit']:
             raise ValueError('\'type\' must one of [IPaddr2,iSCSITarget,portblock,iSCSILogicalUnit]')
 
-        cmd_result = execute_crm_cmd(f'crm res list | grep {res}')
+        cmd_result = execute_crm_cmd(f'crm res list | grep {res} | cat')
         re_status = f'{res}\s*\(ocf::heartbeat:{type}\):\s*(\w*)'
         status = s.re_search(re_status,cmd_result['rst'],output_type='groups')
         if status:
             if status[0] == 'Started':
                 return 'STARTED'
+            elif status[0] == 'FAILED':
+                return 'FAILED'
             else:
                 return 'NOT_STARTED'
 
@@ -372,7 +375,7 @@ class CRMConfig():
         while n < times:
             n += 1
             if self.get_crm_res_status(res,type) == expect_status:
-                s.prt_log(f'The status of {res} is {expect_status} now.',0)
+                s.prt_log(f'The status of {res} is {expect_status} now.',0,no_print=True)
                 return True
             else:
                 time.sleep(1)
@@ -387,7 +390,7 @@ class CRMConfig():
         if result['sts']:
             return True
         else:
-            s.prt_log(f"Stop {res} fail",1)
+            s.prt_log(f"Stop {res} fail",1,no_print=True)
 
 
     def execute_delete(self, res):
@@ -395,16 +398,17 @@ class CRMConfig():
         cmd = f'crm conf del {res}'
         result = execute_crm_cmd(cmd)
         if result['sts']:
-            s.prt_log(f"Delete {res} success", 0)
+            s.prt_log(f"Delete {res} success", 0,no_print=True)
             return True
         else:
             output = result['rst']
             re_str = re.compile(rf'INFO: hanging colocation:.*? deleted\nINFO: hanging order:.*? deleted\n')
             if s.re_search(re_str, output):
-                s.prt_log(f"Delete {res} success(including colocation and order)", 0)
+                s.prt_log(f"Delete {res} success(including colocation and order)", 0,no_print=True)
                 return True
             else:
-                s.prt_log(result['rst'],1)
+                # 错误信息，因为进度条的关系暂时不打印，可以考虑收集起来等进度条完成之后统一打印
+                s.prt_log(result['rst'],1,no_print=True)
                 return False
 
     def delete_res(self, res, type):
@@ -413,10 +417,9 @@ class CRMConfig():
             if self.checkout_status(res,type,'NOT_STARTED'):
                 if self.execute_delete(res):
                     return True
-        s.prt_log(f"Delete {res} fail",1)
+        s.prt_log(f"Delete {res} fail",1,no_print=True)
 
     def start_res(self, res):
-        s.prt_log(f"try to start {res}", 0)
         cmd = f'crm res start {res}'
         result = execute_crm_cmd(cmd)
         if result['sts']:
@@ -447,7 +450,7 @@ class IPaddr2():
             s.prt_log(cmd_result['rst'],1)
             raise consts.CmdError
         else:
-            s.prt_log(f'Create vip:{name} successfully',0)
+            s.prt_log(f'Create vip:{name} successfully',0,no_print=True)
             return True
 
     @RollBack
@@ -457,7 +460,7 @@ class IPaddr2():
         if not result:
             raise consts.CmdError
         else:
-            s.prt_log(f'Delete vip:{name} successfully',0)
+            s.prt_log(f'Delete vip:{name} successfully',0,no_print=True)
             return True
 
     @RollBack
@@ -472,7 +475,7 @@ class IPaddr2():
             s.prt_log(cmd_result_netmask['rst'],1)
             raise consts.CmdError
         else:
-            s.prt_log(f'Modify vip:{name} (IP and Netmask) successfully',0)
+            s.prt_log(f'Modify vip:{name} (IP and Netmask) successfully',0,no_print=True)
             return True
 
 
@@ -481,6 +484,7 @@ class PortBlockGroup():
     def __init__(self):
         self.block = None
         self.unblock = None
+        self.logger = log.Log()
 
     @RollBack
     def create(self,name,ip,port,action):
@@ -503,7 +507,7 @@ class PortBlockGroup():
             s.prt_log(cmd_result['rst'],1)
             raise consts.CmdError
         else:
-            s.prt_log(f'Create portblock:{name} successfully',0)
+            s.prt_log(f'Create portblock:{name} successfully',0,no_print=True)
             return True
 
     @RollBack
@@ -513,7 +517,7 @@ class PortBlockGroup():
         if not result:
             raise consts.CmdError
         else:
-            s.prt_log(f'Delete portblock:{name} successfully',0)
+            s.prt_log(f'Delete portblock:{name} successfully',0,no_print=True)
             return True
 
     @RollBack
@@ -523,11 +527,11 @@ class PortBlockGroup():
         cmd_result_ip = execute_crm_cmd(cmd_ip)
         cmd_result_port = execute_crm_cmd(cmd_port)
         if not cmd_result_ip['sts'] or not cmd_result_port['sts']:
-            s.prt_log(cmd_result_ip['rst'],1)
-            s.prt_log(cmd_result_port['rst'], 1)
+            s.prt_log(f"\n{cmd_result_ip['rst']}",1)
+            s.prt_log(f"\n{cmd_result_port['rst']}",1)
             raise consts.CmdError
         else:
-            s.prt_log(f"Modify portblock:{name} (IP and Port) successfully",0)
+            s.prt_log(f"Modify portblock:{name} (IP and Port) successfully",0,no_print=True)
             return True
 
 
@@ -542,10 +546,10 @@ class Colocation():
         cmd_result = execute_crm_cmd(cmd)
         if not cmd_result['sts']:
             # 创建失败，输出原命令报错信息
-            s.prt_log(cmd_result['rst'],1)
+            s.prt_log(f"\n{cmd_result['rst']}",1)
             raise consts.CmdError
         else:
-            s.prt_log(f'Create colocation:{name} successfully',0)
+            s.prt_log(f'Create colocation:{name} successfully',0,no_print=True)
             return True
 
 
@@ -560,10 +564,10 @@ class Order():
         cmd_result = execute_crm_cmd(cmd)
         if not cmd_result['sts']:
             # 创建失败，输出原命令报错信息
-            s.prt_log(cmd_result['rst'],1)
+            s.prt_log(f"\n{cmd_result['rst']}",1)
             raise consts.CmdError
         else:
-            s.prt_log(f'Create order:{name} successfully',0)
+            s.prt_log(f'Create order:{name} successfully',0,no_print=True)
             return True
 
 
@@ -577,10 +581,10 @@ class ISCSITarget():
         cmd = f'crm cof set {name}.portals {ip}:{port}'
         cmd_result = execute_crm_cmd(cmd)
         if not cmd_result['sts']:
-            s.prt_log(cmd_result['rst'],1)
+            s.prt_log(f"\n{cmd_result['rst']}",1)
             raise consts.CmdError
         else:
-            s.prt_log(f'Modify {name} successfully',0)
+            s.prt_log(f'Modify {name} successfully',0,no_print=True)
             return True
 
 

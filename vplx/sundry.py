@@ -266,7 +266,7 @@ def prt(str_, warning_level=0):
         Replay.replay_data.append(list_rd1)
         Replay.replay_data.append(list_rd2)
 
-def prt_log(str_, warning_level):
+def prt_log(str_, warning_level,no_print=False):
     """
     print, write to log and exit.
     :param logger: Logger object for logging
@@ -274,7 +274,8 @@ def prt_log(str_, warning_level):
     """
     logger = log.Log()
     RPL = Replay.switch
-    prt(str_, warning_level)
+    if not no_print:
+        prt(str_, warning_level)
 
     if warning_level == 0:
         logger.write_to_log('INFO', 'INFO', 'finish', 'output', str_)
@@ -378,9 +379,9 @@ class ProgressBar(object):
         print(f"\r{full_info}", end='', flush=True)
 
         if self.now == self.total:
-            print('\n创建成功')
-        if self.now == 0:
-            print('\n回退成功')
+            print('')
+        if self.now == 0 and schedule != 0:
+            print('')
 
 
 if __name__ == '__main__':
