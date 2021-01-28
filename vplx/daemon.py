@@ -4,7 +4,7 @@ import sys
 sys.path.append("..")
 import log
 
-log.Log.file_name = log.WEB_LOG_NAME
+log.Log.filename = log.WEB_LOG_NAME
 logger = log.Log()
 app = create_app()
 

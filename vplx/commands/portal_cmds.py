@@ -98,15 +98,15 @@ class PortalCommands():
         Delete PORTAL
         """
         # add arguments of portal delete
-        P_delete_portal = portal_subp.add_parser(
+        p_delete_portal = portal_subp.add_parser(
             'delete', aliases='d', help='Delete the PORTAL',usage=Usage.portal_delete)
 
-        P_delete_portal.add_argument(
+        p_delete_portal.add_argument(
             'portal',
             action='store',
             help='portal name')
 
-        P_delete_portal.set_defaults(func=self.delete)
+        p_delete_portal.set_defaults(func=self.delete)
 
         portal_parser.set_defaults(func=self.print_portal_help)
 

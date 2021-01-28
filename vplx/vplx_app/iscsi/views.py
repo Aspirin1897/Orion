@@ -49,13 +49,13 @@ iscsi_blueprint.add_url_rule('/map/modify', view_func=model.MapModify.as_view('m
 '''
 @note: iSCSI 操作/删除
 '''
-iscsi_blueprint.add_url_rule('/host/delete/check', view_func=model.CheckHostDelete.as_view('host_delete_check'))
-iscsi_blueprint.add_url_rule('/host/delete', view_func=model.HostDelete.as_view('host_delete'))
-iscsi_blueprint.add_url_rule('/hg/delete/check', view_func=model.CheckHgDelete.as_view('hg_delete_check'))
-iscsi_blueprint.add_url_rule('/hg/delete', view_func=model.HgDelete.as_view('hg_delete'))
-iscsi_blueprint.add_url_rule('/dg/delete/check', view_func=model.CheckDgDelete.as_view('dg_delete_check'))
-iscsi_blueprint.add_url_rule('/dg/delete', view_func=model.DgDelete.as_view('dg_delete'))
-iscsi_blueprint.add_url_rule('/map/delete/check', view_func=model.CheckMapDelete.as_view('map_delete_check'))
-iscsi_blueprint.add_url_rule('/map/delete', view_func=model.MapDelete.as_view('map_delete'))
+iscsi_blueprint.add_url_rule('/all/delete/check', view_func=model.CheckAllDelete.as_view('all_delete_check'))
+iscsi_blueprint.add_url_rule('/all/delete', view_func=model.AllDelete.as_view('all_delete'))
+# iscsi_blueprint.add_url_rule('/hg/delete/check', view_func=model.CheckHgDelete.as_view('hg_delete_check'))
+# iscsi_blueprint.add_url_rule('/hg/delete', view_func=model.HgDelete.as_view('hg_delete'))
+# iscsi_blueprint.add_url_rule('/dg/delete/check', view_func=model.CheckDgDelete.as_view('dg_delete_check'))
+# iscsi_blueprint.add_url_rule('/dg/delete', view_func=model.DgDelete.as_view('dg_delete'))
+# iscsi_blueprint.add_url_rule('/map/delete/check', view_func=model.CheckMapDelete.as_view('map_delete_check'))
+# iscsi_blueprint.add_url_rule('/map/delete', view_func=model.MapDelete.as_view('map_delete'))
 
 

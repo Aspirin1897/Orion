@@ -918,13 +918,14 @@ function btn_show_delete(obj) {
 	};
 	$("#map_delete_data").val(td_map_name);
 	$.ajax({
-		url : vplxIp + "/map/delete/check",
+		url : vplxIp + "/all/delete/check",
 		type : "get",
 		dataType : "json",
 		data : {
 			tid : tid,
 			ip : mgtIp,
-			map_name: td_map_name
+			iscsi_type:'Map',
+			iscsi_name: td_map_name
 		},
 		async : false,
 		success : function(map_result) {
@@ -936,13 +937,14 @@ function btn_show_delete(obj) {
 function affirm_delete(obj) {
 	map_delete_name = $("#map_delete_data").val();
 	$.ajax({
-		url : vplxIp + "/map/delete",
+		url : vplxIp + "/all/delete",
 		type : "get",
 		dataType : "json",
 		data : {
 			tid : tid,
 			ip : mgtIp,
-			map_name: map_delete_name
+			iscsi_type:'Map',
+			iscsi_name: map_delete_name
 		},
 		async : false,
 		success : function(map_result) {

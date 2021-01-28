@@ -7,7 +7,8 @@ Created on 2020/3/2
 
 from flask import Flask, jsonify, render_template, request, make_response, views
 import process
-import log
+from public import log
+
 
 def cors_data(datadict):
     response = make_response(jsonify(datadict))
@@ -55,7 +56,7 @@ class OprtResource(views.MethodView):
  # 'count': 10,输入值为list数量值
 # aa  = len(RESOURCEDICT_test['data'])
 RESOURCEDICT_test = {'code': 0,
-'count':8, 
+'count':8,
  'data': [{'device_name': u'/dev/drbd1000',
            'mirror_way': 1,
            'mirror_way_son': [{'drbd_role': u'primary',
@@ -154,7 +155,9 @@ RESOURCEDICT_test = {'code': 0,
            'used': u'InUse'}],
  'msg': ''}
 
+
 class ResourceResult(views.MethodView):  
+
     def get(self):
         # get_request_data()
         # logger = log.Log()
@@ -307,7 +310,6 @@ class NodeResult(views.MethodView):
 #         return cors_data(RESOURCEDICT)
         return cors_data(NODEDICT_test)
     
-    
  
 STORAGEPOOL = None
 
@@ -422,8 +424,6 @@ STORAGEPOOL_test = {'code': 0,
            'stp_name': u'poolvg1',
            'total_size': u'5.00GiB'}],
  'msg': ''}
-
- 
    
     
 def get_all_storagepool():
@@ -462,7 +462,10 @@ class StoragepoolResult(views.MethodView):
 '''
 @note: 删除model
 '''
+
+
 class ResourceD(views.MethodView):  
+
     def get(self):
         data = get_request_data()
         print(data)
@@ -470,13 +473,17 @@ class ResourceD(views.MethodView):
         print(ResourceD_data)
         message = "删除成功"
         return cors_data(message)
+
      
 class NodeD(views.MethodView):  
+
     def get(self):
         data = get_request_data()
         return
+
      
 class StoragepoolD(views.MethodView):  
+
     def get(self):
         data = get_request_data()
      
@@ -485,7 +492,10 @@ class StoragepoolD(views.MethodView):
 '''
 @note: 创建资源
 '''
+
+
 class LINSTORCreate(views.MethodView):
+
     def get(self):
         data = get_request_data()
         print(data)
@@ -495,17 +505,18 @@ class LINSTORCreate(views.MethodView):
 @note: 交互
 '''
         
-        
 lvm = None
 sp = None
 node_create = None
 node_num = None
+
 
 class LINSTORView(views.MethodView):
     global lvm
     global sp
     global node_create
     global node_num
+
     def get(self):
         pc = Process.Process_data()
         lvm = pc.get_option_lvm()
@@ -515,10 +526,13 @@ class LINSTORView(views.MethodView):
         return 'Test'
 
 
+LVM = {'lvm':[{"node_key":"Node1"}, {"node_key":"Node2"}, {"node_key":"Node3"}, {"node_key":"Node4"}],
+      'thin_lvm': [{"node_key":"Node1"}, {"node_key":"Node2"}, {"node_key":"Node3"}, {"node_key":"Node5"}]     
+             }
 class lvmView(views.MethodView):  
 
     def get(self):
-        return cors_data(lvm)
+        return cors_data(LVM)
 
  
 class spView(views.MethodView):  
@@ -540,20 +554,23 @@ class spView(views.MethodView):
 
     
 class nodecreateView(views.MethodView):  
+
     def get(self):
         return cors_data(node_create)
 
 
 class nodenumView(views.MethodView):  
+
     def get(self):
         return cors_data(node_num)
-    
 
 '''
 @note: 修改model
 '''
+
  
 class LINSTORModify(views.MethodView):  
+
     def get(self):
         data = get_request_data()
         print(data)

@@ -2,16 +2,32 @@
 import logging
 import logging.handlers
 import logging.config
-import consts
-from vplx import sundry
+import threading
+import getpass
+import time
+from random import shuffle
 
 
 
 
-LOG_PATH = '../mgt/'
+
+LOG_PATH = '../vplx/'
 # LOG_PATH = '/var/log/vtel/'
 CLI_LOG_NAME = 'cli.log'
 WEB_LOG_NAME = 'web.log'
+
+
+def get_username():
+    return getpass.getuser()
+
+def create_transaction_id():
+    return int(time.time())
+
+def create_oprt_id():
+    time_stamp = str(create_transaction_id())
+    str_list = list(time_stamp)
+    shuffle(str_list)
+    return ''.join(str_list)
 
 
 class MyLoggerAdapter(logging.LoggerAdapter):
@@ -20,6 +36,18 @@ class MyLoggerAdapter(logging.LoggerAdapter):
     其中对于kwargs参数的操作应该是先判断其本身是否包含extra关键字，如果包含则不使用默认值进行替换；
     如果kwargs参数中不包含extra关键字则取默认值。
     """
+    extra_dict = {
+        "user": "USERNAME",
+        "tid": "",
+        "t1": "TYPE1",
+        "t2": "TYPE2",
+        "d1": "",
+        "d2": "",
+        "data": ""}
+
+    def __init__(self,log_path,file_name):
+        super().__init__(self.get_my_logger(log_path,file_name),self.extra_dict)
+
 
     def process(self, msg, kwargs):
         if 'extra' not in kwargs:
@@ -27,8 +55,39 @@ class MyLoggerAdapter(logging.LoggerAdapter):
         return msg, kwargs
 
 
+    def get_my_logger(self,log_path,file_name):
+        handler_input = logging.handlers.RotatingFileHandler(filename=f'{log_path}{file_name}',
+                                                             mode='a',
+                                                             maxBytes=10 * 1024 * 1024, backupCount=20)
+        fmt = logging.Formatter(
+            "%(asctime)s [%(tid)s] [%(user)s] [%(t1)s] [%(t2)s] [%(d1)s] [%(d2)s] [%(data)s]|",
+            datefmt='[%Y/%m/%d %H:%M:%S]')
+        handler_input.setFormatter(fmt)
+        logger = logging.getLogger('vtel_logger')
+        logger.addHandler(handler_input)
+        logger.setLevel(logging.DEBUG)
+        self.handler_input = handler_input
+        return logger
+
+    def remove_my_handler(self):
+        # 可以考虑修改为异常处理
+        if self.handler_input:
+            self.logger.removeHandler(self.handler_input)
+
+
+
+
 class Log(object):
-    def __init__(self, user, tid,file_name=CLI_LOG_NAME):
+    _instance_lock = threading.Lock()
+    # _instance = None
+    user = None #新的进程
+    tid = None
+    file_name = CLI_LOG_NAME
+    log_path = LOG_PATH
+    log_switch = True
+    logger = None
+
+    def __init__(self):
         """
         日志格式：
         asctime：时间
@@ -44,38 +103,29 @@ class Log(object):
         :param tid:
         :param file_name:
         """
-        fmt = logging.Formatter(
-            "%(asctime)s [%(tid)s] [%(user)s] [%(t1)s] [%(t2)s] [%(d1)s] [%(d2)s] [%(data)s]|",
-            datefmt='[%Y/%m/%d %H:%M:%S]')
-        self.handler_input = logging.handlers.RotatingFileHandler(filename=f'{LOG_PATH}{file_name}', mode='a',
-                                                             maxBytes=10*1024*1024, backupCount=20)
-        self.handler_input.setFormatter(fmt)
-        self.user = user
-        self.tid = tid
+        pass
 
-    def logger_input(self):
-        vtel_logger = logging.getLogger('vtel_logger')
-        vtel_logger.addHandler(self.handler_input)
-        vtel_logger.setLevel(logging.DEBUG)
-        extra_dict = {
-            "user": "USERNAME",
-            "tid": "",
-            "t1": "TYPE1",
-            "t2": "TYPE2",
-            "d1": "",
-            "d2": "",
-            "data": ""}
-        # 获取一个自定义LoggerAdapter类的实例
-        logger = MyLoggerAdapter(vtel_logger, extra_dict)
-        return logger
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(cls, '_instance'):
+            with Log._instance_lock:
+                if not hasattr(cls, '_instance'):
+                    Log._instance = super().__new__(cls)
+                    Log._instance.logger = MyLoggerAdapter(LOG_PATH,CLI_LOG_NAME)
+
+        return Log._instance
 
     # write to log file
     def write_to_log(self, t1, t2, d1, d2, data):
-        vtel_logger = self.logger_input()
+        vtel_logger = Log._instance.logger
+        # 获取到日志开关不为True时，移除处理器，不再将数据记录到文件中
+        if not self.log_switch:
+            vtel_logger.remove_my_handler()
 
-        # 获取到日志开关变量为'no'时，移除处理器，不再将数据记录到文件中
-        if consts.glo_log_switch() == 'no':
-            vtel_logger.logger.removeHandler(self.handler_input)
+        if not self.user:
+            self.user = get_username()
+        if not self.tid:
+            self.tid = create_transaction_id()
+
         vtel_logger.debug(
             '',
             extra={

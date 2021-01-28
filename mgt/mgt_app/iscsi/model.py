@@ -29,7 +29,7 @@ class ISCSIWrite(views.MethodView):
         if request.method == 'GET':
             log_data = request.args.to_dict()
             if log_data:
-                logger = consts.glo_log()
+                logger = log.Log()
                 logger.tid = log_data['tid']
                 logger.write_to_log(log_data['t1'], log_data['t2'], log_data['d1'], log_data['d2'], log_data["data"])
         return cors_data("success")

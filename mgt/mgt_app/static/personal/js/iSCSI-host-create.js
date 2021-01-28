@@ -371,13 +371,14 @@ function btn_show_delete(obj) {
 	};
 	$("#host_delete_data").val(td_host_name);
 	$.ajax({
-		url : vplxIp + "/host/delete/check",
+		url : vplxIp + "/all/delete/check",
 		type : "get",
 		dataType : "json",
 		data : {
 			tid : tid,
 			ip : mgtIp,
-			host_name: td_host_name
+			iscsi_type:'Host',
+			iscsi_name: td_host_name
 		},
 		async : false,
 		success : function(host_result) {
@@ -389,13 +390,14 @@ function btn_show_delete(obj) {
 function affirm_delete(obj) {
 	host_delete_name = $("#host_delete_data").val();
 	$.ajax({
-		url : vplxIp + "/host/delete",
+		url : vplxIp + "/all/delete",
 		type : "get",
 		dataType : "json",
 		data : {
 			tid : tid,
 			ip : mgtIp,
-			host_name: host_delete_name
+			iscsi_type:'Host',
+			iscsi_name: host_delete_name
 		},
 		async : false,
 		success : function(host_result) {

@@ -50,7 +50,10 @@
 								<div class="layui-inline">
 									<label class="layui-form-label">SP</label>
 									<div class="layui-input-inline">
-										<select name="quiz">
+										<select name="classifyId" id="classifyId"
+											lay-verify="required" lay-search="">
+											<option value="">直接选择或搜索选择</option>
+										</select> <select name="quiz">
 											<option value="">请选择正确值</option>
 											<optgroup label="城市记忆">
 												<option value="你工作的第一个城市">你工作的第一个城市</option>
@@ -125,7 +128,7 @@
 							</div>
 						</div>
 						<div class="layui-tab-item">
-						<div class="layui-form-item">
+							<div class="layui-form-item">
 								<label class="layui-form-label">R_N</label>
 								<div class="layui-input-inline">
 									<input type="text" placeholder="请输入正确值" name="R_Name"
@@ -157,8 +160,8 @@
 										lay-filter="demo1">Create</button>
 								</div>
 							</div>
-						
-						
+
+
 						</div>
 					</div>
 				</div>

@@ -13,9 +13,9 @@ import readline
 import math
 
 import consts
+# from public import log
 import log
 from replay import Replay,LogDB
-
 
 
 def deco_record_exception(func):
@@ -383,23 +383,4 @@ class ProgressBar(object):
         if self.now == 0 and schedule != 0:
             print('')
 
-
-if __name__ == '__main__':
-    pb = ProgressBar()
-    pb.print_next(1,type='add')
-    time.sleep(1)
-    pb.print_next(11,type='add')
-    time.sleep(1)
-    pb.print_next(19,type='add')
-    time.sleep(1)
-    pb.print_next(21,type='add')
-    time.sleep(1)
-    pb.print_next(19,type='add')
-    time.sleep(1)
-    pb.print_next(28,type='add')
-    time.sleep(1)
-    pb.print_next(50,type='less')
-    time.sleep(1)
-    pb.print_next(49,type='less')
-    time.sleep(1)
 

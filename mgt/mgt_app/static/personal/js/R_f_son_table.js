@@ -425,35 +425,6 @@ function resource_oprt() {
 										}
 
 									});
-					
-					layui.use(['form', 'layedit', 'laydate','element'], function(){
-						  var form = layui.form
-						  ,layer = layui.layer
-						  ,layedit = layui.layedit
-						  ,laydate = layui.laydate;
-						  var $ = layui.jquery
-						  ,element = layui.element;
-
-							 
-							 // 监听提交
-							  form.on('submit(demo1)', function(data){
-								  resource_data = JSON.stringify(data.field);
-									$.ajax({
-							    		url :  vplxIp +'/LINSTOR/Create',
-							    		type : "get",
-							    		dataType : "json",
-							    		data : {
-							    			tid : tid,
-							    			resource_data : resource_data
-							    		},
-							    		async : false,
-							    		success : function(delete_result) {
-							    		}
-							    	});
-								  
-							  });
-					});
-							
 				},
 				error:function () {
 					write_to_log(tid,'OPRT','ROUTE',vplxIp,'/resource/show/oprt','error');
@@ -465,5 +436,50 @@ function resource_oprt() {
 resource_oprt();
 
 
+layui.use(['form', 'layedit', 'laydate','element'], function(){
+	  var form = layui.form
+	  ,layer = layui.layer
+	  ,layedit = layui.layedit
+	  ,laydate = layui.laydate;
+	  var $ = layui.jquery
+	  ,element = layui.element;
+	  getClassify();
+
+		 
+		 // 监听提交
+		  form.on('submit(demo1)', function(data){
+			  resource_data = JSON.stringify(data.field);
+				$.ajax({
+		    		url :  vplxIp +'/LINSTOR/Create',
+		    		type : "get",
+		    		dataType : "json",
+		    		data : {
+		    			tid : tid,
+		    			resource_data : resource_data
+		    		},
+		    		async : false,
+		    		success : function(delete_result) {
+		    		}
+		    	});
+		  });
+});
+
+
+function getClassify(){
+	 $("#classifyId").empty();
+   $.ajax({
+       url: vplxIp + '/LINSTOR/Create/sp',
+       success:function(lvm_data){
+       	console.log(lvm_data);
+           if(lvm_data.lvm){
+               for(var i =0;i<lvm_data.lvm.length;i++){
+                   $("#classifyId").append("<option value=\""+lvm_data.lvm[i].node_key+"\">"+lvm_data.lvm[i].node_key+"</option>");
+               }
+               //重新渲染
+               layui.form.render("select");
+           }
+       }
+   });
+}
 
 

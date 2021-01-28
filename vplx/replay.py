@@ -49,7 +49,6 @@ def _get_log_data():
 
 
 
-
 class LogDB():
     _instance_lock = threading.Lock()
     transaction_id = ''
@@ -286,7 +285,7 @@ class Replay():
             finally:
                 title = f"transaction: {dict_cmd['tid']}  command: {dict_cmd['cmd']}"
                 table = self.make_table(title,self.replay_data)
-                print(table)
+                print(f'\r{table}',end='',flush=True)
                 print('\n')
                 if self.mode == 'LITE':
                     self.replay_lite()

@@ -56,7 +56,6 @@ class RollBack():
     dict_rollback = {'IPaddr2':{}, 'PortBlockGroup':{} , 'ISCSITarget':{}}
     def __init__(self, func):
         self.func = func
-        # self.progressbar = s.ProgressBar()
 
     def __call__(self, *args, **kwargs):
         self.type,self.oprt = self.func.__qualname__.split('.')
@@ -116,13 +115,10 @@ class RollBack():
             for name, oprt in self.dict_rollback['IPaddr2'].items():
                 if oprt == 'create':
                     obj_ipaddr2.delete(name)
-                    self.progressbar.print_next(10,'less')
                 elif oprt == 'delete':
                     obj_ipaddr2.create(name,ip,netmask)
-                    self.progressbar.print_next(10, 'less')
                 elif oprt == 'modify':
                     obj_ipaddr2.modify(name,ip,netmask)
-                    self.progressbar.print_next(10, 'less')
 
 
     def rb_block(self,ip,port,netmask):
@@ -148,7 +144,7 @@ class RollBack():
             obj_target = ISCSITarget()
             for name,oprt in self.dict_rollback['ISCSITarget'].items():
                 if oprt == 'modify':
-                    obj_target.modify(name,ip,port)
+                    obj_target.modify(name,ip,port,netmask)
             self.progressbar.print_next(20, 'less')
 
 
@@ -200,6 +196,28 @@ class CRMData():
         self.target = dict_target
         return dict_target
 
+    def get_order(self):
+        """
+        colocation col_pt1_prtblk_off inf: pt1_prtblk_off pt1
+        colocation col_pt1_prtblk_on inf: pt1_prtblk_on pt1
+        order or_pt1_prtblk_on pt1 pt1_prtblk_on
+        :return:
+        """
+        re_order = re.compile(r'^order\s(.*?)\s(.*?)\s(.*?)$',re.MULTILINE)
+        result = s.re_findall(re_order,self.crm_conf_data)
+        dict_order = {}
+        for order in result:
+            dict_order.update({order[0]:[order[1],order[2]]})
+        return dict_order
+
+    def get_colocation(self):
+        re_colocation = re.compile(r'^colocation\s(.*?)\sinf:\s(.*?)\s(.*?)$',re.MULTILINE)
+        result = s.re_findall(re_colocation,self.crm_conf_data)
+        dict_colocation = {}
+        for colocation in result:
+            dict_colocation.update({colocation[0]:{colocation[1],colocation[2]}})
+        return dict_colocation
+
     def get_portal_data(self,vip_all,portblock_all,target_all):
         """
         获取现在CRM的环境下所有Portal的数据，
@@ -224,11 +242,11 @@ class CRMData():
 
         return dict_portal
 
-    def check_portal_component(self,vip,portblock):
+    def check_portal_component(self,vip,portblock,order,colocation):
         """
         对目前环境的portal组件(ipaddr,portblock）的检查，需满足：
-        1.不存在单独的portblock
-        2.已存在的ipaddr，必须有对应的portblock组（block，unblock）
+        1.不存在单独的portblock/vip
+        2.已存在的ipaddr，必须有对应的portblock组（block，unblock）以及对应的order和colocation
         不满足条件时提示并退出
         :param vip_all: dict
         :param portblock_all: dict
@@ -237,14 +255,26 @@ class CRMData():
         dict_portal = {}
         list_normal_portblock = []
         for vip_name,vip_data in list(vip.items()):
-            dict_portal.update({vip_name:{'status':'ERROR'}}) #error/normal
+            dict_portal.update({vip_name:{}}) #error/normal
             for pb_name,pb_data in list(portblock.items()):
                 if vip_data['ip'] == pb_data['ip']:
                     dict_portal[vip_name].update({pb_name:pb_data['type']})
                     list_normal_portblock.append(pb_name)
-            if len(dict_portal[vip_name]) == 3:
+            if len(dict_portal[vip_name]) == 2:
                 if 'block' and 'unblock' in dict_portal[vip_name].values():
-                    dict_portal[vip_name]['status'] = 'NORMAL'
+                    dict_portal[vip_name] = {pb_type:pb for pb,pb_type in dict_portal[vip_name].items()}
+                    for ord_name,ord_data in list(order.items()):
+                        if [vip_name,dict_portal[vip_name]['block']] == ord_data:
+                            # 这里没考虑符合条件的多个order的这种情况
+                            dict_portal[vip_name].update({'order':ord_name})
+
+                    for col_name,col_data in list(colocation.items()):
+                        # 这里同样没考虑多个符合条件的colocatin这种情况
+                        if {vip_name,dict_portal[vip_name]['block']} == col_data:
+                            dict_portal[vip_name].update({'colocation_block':col_name})
+                        if {vip_name,dict_portal[vip_name]['unblock']}== col_data:
+                            dict_portal[vip_name].update({'colocation_unblock':col_name})
+
 
         error_portblock = set(portblock.keys()) - set(list_normal_portblock)
         if error_portblock:
@@ -252,7 +282,7 @@ class CRMData():
         list_portal = [] # portal如果没有block和unblock，则会加进这个列表
 
         for portal_name,portal_data in list(dict_portal.items()):
-            if portal_data['status'] == 'ERROR':
+            if len(dict_portal[portal_name]) != 5:
                 list_portal.append(portal_name)
         if list_portal:
             s.prt_log(f'Portal:{",".join(list_portal)} can not be used normally,  please proceed',2)
@@ -299,7 +329,9 @@ class CRMData():
         vip = self.get_vip()
         portblock = self.get_portblock()
         target = self.get_target()
-        self.check_portal_component(vip,portblock)
+        order = self.get_order()
+        colocation = self.get_colocation()
+        self.check_portal_component(vip,portblock,order,colocation)
         self.check_env_sync(vip,portblock,target)
 
 
@@ -686,3 +718,6 @@ class ISCSILogicalUnit():
 
         # 验证？
         return True
+
+
+

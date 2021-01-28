@@ -27,10 +27,12 @@ class SyncCommands():
         # 获取数据
         vip = obj_crm.get_vip()
         portblock = obj_crm.get_portblock()
+        order = obj_crm.get_order()
+        colocation = obj_crm.get_colocation()
         target = obj_crm.get_target()
 
         # 检查
-        obj_crm.check_portal_component(vip, portblock)
+        obj_crm.check_portal_component(vip, portblock, order, colocation)
 
         portal = obj_crm.get_portal_data(vip,portblock,target)
         js.cover_data('Portal',portal)

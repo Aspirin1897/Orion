@@ -419,6 +419,9 @@ function hg_table() {
 						},
 						async : false,
 						success : function(host_group_result) {
+							console.log(host_group_result);
+							$("#Host_Group_Table_Show tr:not(:first)").html("");
+							
 							write_to_log(tid, 'DATA', 'ROUTE', vplxIp,
 									'/hg/show/data', JSON
 											.stringify(host_group_result));
@@ -635,13 +638,14 @@ function btn_show_delete(obj) {
 	};
 	$("#hg_delete_data").val(td_hg_name);
 	$.ajax({
-		url : vplxIp + "/hg/delete/check",
+		url : vplxIp + "/all/delete/check",
 		type : "get",
 		dataType : "json",
 		data : {
 			tid : tid,
 			ip : mgtIp,
-			hg_name: td_hg_name
+			iscsi_type:'HostGroup',
+			iscsi_name: td_hg_name
 		},
 		async : false,
 		success : function(hg_result) {
@@ -653,13 +657,14 @@ function btn_show_delete(obj) {
 function affirm_delete(obj) {
 	hg_delete_name = $("#hg_delete_data").val();
 	$.ajax({
-		url : vplxIp + "/hg/delete",
+		url : vplxIp + "/all/delete",
 		type : "get",
 		dataType : "json",
 		data : {
 			tid : tid,
 			ip : mgtIp,
-			hg_name: hg_delete_name
+			iscsi_type:'HostGroup',
+			iscsi_name: hg_delete_name
 		},
 		async : false,
 		success : function(hg_result) {
