@@ -827,7 +827,7 @@ class Portal():
             self.progressbar.print_next(10, 'add')
             obj_portblock.delete(f'{name}_prtblk_off')
             self.progressbar.print_next(10, 'add')
-
+            raise TypeError
         except Exception as ex:
             self.logger.write_to_log('DATA', 'DEBUG', 'exception', 'Rollback', str(traceback.format_exc()))
             portal = self.js.json_data['Portal'][name]

@@ -115,10 +115,13 @@ class RollBack():
             for name, oprt in self.dict_rollback['IPaddr2'].items():
                 if oprt == 'create':
                     obj_ipaddr2.delete(name)
+                    self.progressbar.print_next(10, 'less')
                 elif oprt == 'delete':
                     obj_ipaddr2.create(name,ip,netmask)
+                    self.progressbar.print_next(10, 'less')
                 elif oprt == 'modify':
                     obj_ipaddr2.modify(name,ip,netmask)
+                    self.progressbar.print_next(10, 'less')
 
 
     def rb_block(self,ip,port,netmask):
